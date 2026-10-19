@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>메트로폴리스: 도시를 잇다 (Connect the Metropolis)</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.90);
+            --panel-border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--panel-border);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .title-area h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stats-container {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .progress-bar-container {
+            width: 120px;
+            height: 8px;
+            background: #334155;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 2px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 5%;
+            background: linear-gradient(90deg, #3b82f6, #10b981);
+            transition: width 0.3s ease;
+        }
+
+        #game-container {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls-overlay {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            max-width: 95vw;
+            overflow-x: auto;
+        }
+
+        .line-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .line-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .line-btn.active {
+            transform: scale(1.15);
+            border-color: #ffffff;
+            box-shadow: 0 0 12px currentColor;
+        }
+
+        .action-btn {
+            background: #334155;
+            color: #f8fafc;
+            border: 1px solid #475569;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #475569;
+        }
+
+        .action-btn.active {
+            background: #3b82f6;
+            border-color: #60a5fa;
+        }
+
+        .action-btn.danger {
+            background: #7f1d1d;
+            border-color: #991b1b;
+        }
+
+        .action-btn.danger:hover {
+            background: #991b1b;
+        }
+
+        .sidebar {
+            position: absolute;
+            top: 70px;
+            right: 16px;
+            width: 260px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 10;
+            max-height: calc(100vh - 160px);
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(300px);
+        }
+
+        .sidebar-title {
+            font-size: 0.9rem;
+            font-weight: bold;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+        }
+
+        .congestion-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 6px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 520px;
+            padding: 24px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #38bdf8;
+            text-align: center;
+        }
+
+        .modal-body {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #cbd5e1;
+            margin-bottom: 20px;
+        }
+
+        .quiz-option {
+            background: #334155;
+            border: 1px solid #475569;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-top: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quiz-option:hover {
+            background: #475569;
+            border-color: #38bdf8;
+        }
+
+        .quiz-option.correct {
+            background: #065f46;
+            border-color: #10b981;
+        }
+
+        .quiz-option.incorrect {
+            background: #991b1b;
+            border-color: #ef4444;
+        }
+
+        .primary-btn {
+            width: 100%;
+            padding: 12px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .primary-btn:hover {
+            background: #1d4ed8;
+        }
+
+        @media (max-width: 640px) {
+            header {
+                padding: 8px;
+            }
+            .title-area h1 {
+                font-size: 0.95rem;
+            }
+            .sidebar {
+                top: auto;
+                bottom: 80px;
+                right: 8px;
+                width: 200px;
+                font-size: 0.75rem;
+            }
+            .controls-overlay {
+                padding: 6px 10px;
+                gap: 8px;
+            }
+            .line-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="title-area">
+            <h1>🚇 메트로폴리스: 도시를 잇다</h1>
+        </div>
+        <div class="stats-container">
+            <div class="stat-box">
+                <span class="stat-label">도시 인구 (목표: 100,000)</span>
+                <span id="pop-text" class="stat-value" style="color: #38bdf8;">5,000 명</span>
+                <div class="progress-bar-container">
+                    <div id="pop-progress" class="progress-bar"></div>
+                </div>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">예산</span>
+                <span id="budget-text" class="stat-value" style="color: #10b981;">₩ 50,000</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">도시 연결도</span>
+                <span id="connectivity-text" class="stat-value" style="color: #f59e0b;">0%</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-label">음향 효과</span>
+                <button id="sound-toggle" class="action-btn" style="padding: 2px 8px;">🔊 ON</button>
+            </div>
+        </div>
+    </header>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-title">
+                <span>📊 범례 및 혼잡도</span>
+                <button id="toggle-sidebar-btn" style="background:none; border:none; color:white; cursor:pointer;">✕</button>
+            </div>
+            
+            <div style="font-size: 0.8rem;">
+                <div style="margin-bottom: 6px; font-weight: bold; color: #94a3b8;">구역 종류</div>
+                <div class="legend-item"><span>🏠 주거 구역</span><span style="color:#10b981;">출발지</span></div>
+                <div class="legend-item"><span>🏢 사무 구역</span><span style="color:#3b82f6;">통근지</span></div>
+                <div class="legend-item"><span>🛍️ 상업 구역</span><span style="color:#f59e0b;">소비/여가</span></div>
+                <div class="legend-item"><span>✈️ 특수 시설</span><span style="color:#a855f7;">학습/교통</span></div>
+            </div>
+
+            <hr style="border-color: #334155;">
+
+            <div style="font-size: 0.8rem;">
+                <div style="margin-bottom: 6px; font-weight: bold; color: #94a3b8;">혼잡도 등급 기준</div>
+                <div class="legend-item"><span><span class="congestion-indicator" style="background:#10b981;"></span>0% ~ 30%</span><span style="color:#10b981;">원활 (초록)</span></div>
+                <div class="legend-item"><span><span class="congestion-indicator" style="background:#f59e0b;"></span>31% ~ 59%</span><span style="color:#f59e0b;">보통 (노랑)</span></div>
+                <div class="legend-item"><span><span class="congestion-indicator" style="background:#f97316;"></span>60% ~ 100%</span><span style="color:#f97316;">혼잡 (주황)</span></div>
+                <div class="legend-item"><span><span class="congestion-indicator" style="background:#ef4444;"></span>101% 이상</span><span style="color:#ef4444;">초과 (빨강)</span></div>
+            </div>
+
+            <hr style="border-color: #334155;">
+
+            <div id="line-stats-list" style="font-size: 0.75rem;">
+                <div style="margin-bottom: 6px; font-weight: bold; color: #94a3b8;">노선별 상태</div>
+            </div>
+        </div>
+
+        <div class="controls-overlay">
+            <div class="line-selector" id="line-buttons"></div>
+            <div style="width: 1px; height: 24px; background: #334155;"></div>
+            <button id="mode-delete-btn" class="action-btn danger">🗑️ 노선 삭제</button>
+            <button id="reset-view-btn" class="action-btn">🔄 위치 리셋</button>
+        </div>
+    </div>
+
+    <div id="modal" class="modal-overlay active">
+        <div class="modal-card">
+            <div id="modal-title" class="modal-header">🚆 도시 철도망 건설 시작</div>
+            <div id="modal-content" class="modal-body">
+                <p><strong>[교육 목표]</strong> 중학교 3학년 사회/지리: 대중교통 인프라와 도시 직주근접 구조 이해</p><br>
+                <p>1. 역(Node)과 역을 드래그하여 지하철 노선을 연결하세요.</p>
+                <p>2. <strong>주거(🏠) - 사무(🏢) - 상업(🛍️)</strong> 구역이 서로 이어지면 <strong>인구가 급격히 증가 (+5,000명)</strong>합니다.</p>
+                <p>3. 혼잡도를 초과하지 않도록 우회 노선을 설계하세요.</p>
+                <p>4. 최종 목표: <strong>인구 100,000명</strong> 달성하기!</p>
+            </div>
+            <button id="modal-action-btn" class="primary-btn">게임 시작하기</button>
+        </div>
+    </div>
+
+    <script>
+        const SoundEngine = {
+            ctx: null,
+            muted: false,
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            playConnect() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            },
+            playPopBonus() {
+                if (this.muted || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.1, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.2);
+                });
+            },
+            playDelete() {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+        };
+
+        // Generates color palette dynamically for lines up to 1,000,000 population
+        const LINE_COLORS = [
+            '#ef4444', '#10b981', '#f59e0b', '#3b82f6', '#a855f7',
+            '#ec4899', '#06b6d4', '#84cc16', '#eab308', '#f97316',
+            '#6366f1', '#14b8a6', '#d946ef', '#f43f5e', '#22c55e',
+            '#0284c7', '#8b5cf6', '#a3e635', '#facc15', '#fb923c',
+            '#38bdf8', '#c084fc'
+        ];
+
+        // Total 22 lines: 3 initial + 1 line every 50,000 population up to 1,000,000
+        const ALL_LINES_CONFIG = Array.from({ length: 22 }, (_, i) => ({
+            id: i + 1,
+            name: `${i + 1}호선`,
+            color: LINE_COLORS[i % LINE_COLORS.length],
+            costPerSegment: 1000 + (i * 100),
+            unlockPop: i < 3 ? 0 : (i - 2) * 50000
+        }));
+
+        const ZONE_TYPES = {
+            RESIDENTIAL: { type: 'RESIDENTIAL', label: '주거', emoji: '🏠', color: '#10b981' },
+            COMMERCIAL: { type: 'COMMERCIAL', label: '사무', emoji: '🏢', color: '#3b82f6' },
+            RETAIL: { type: 'RETAIL', label: '상업', emoji: '🛍️', color: '#f59e0b' },
+            SPECIAL: { type: 'SPECIAL', label: '특수', emoji: '✈️', color: '#a855f7' }
+        };
+
+        const state = {
+            population: 5000,
+            targetPopulation: 1000000,
+            budget: 50000,
+            selectedLineId: 1,
+            unlockedLineCount: 3,
+            deleteMode: false,
+            nodes: [],
+            edges: [],
+            passengers: [],
+            activeTriangles: new Set(),
+            connectivityScore: 0,
+            gameTime: 0,
+            isGameOver: false,
+            dragStartNode: null,
+            mousePos: { x: 0, y: 0 },
+            cameraOffset: { x: 0, y: 0 },
+            isPanning: false,
+            panStart: { x: 0, y: 0 }
+        };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function getUnlockedLines() {
+            // Start with 3 lines, unlock +1 line every 50,000 pop up to 1,000,000
+            const maxPopUnlocked = Math.floor(state.population / 50000);
+            const totalLinesAllowed = Math.min(ALL_LINES_CONFIG.length, 3 + maxPopUnlocked);
+            return ALL_LINES_CONFIG.slice(0, totalLinesAllowed);
+        }
+
+        function initMapNodes() {
+            state.nodes = [];
+            state.edges = [];
+            state.passengers = [];
+            state.activeTriangles.clear();
+            
+            const width = Math.max(800, window.innerWidth);
+            const height = Math.max(600, window.innerHeight);
+
+            const initialTypes = [
+                ZONE_TYPES.RESIDENTIAL, ZONE_TYPES.COMMERCIAL, ZONE_TYPES.RETAIL,
+                ZONE_TYPES.RESIDENTIAL, ZONE_TYPES.COMMERCIAL, ZONE_TYPES.RETAIL,
+                ZONE_TYPES.SPECIAL
+            ];
+
+            initialTypes.forEach((zone, idx) => {
+                const angle = (idx / initialTypes.length) * Math.PI * 2;
+                const radius = 180 + Math.random() * 80;
+                state.nodes.push({
+                    id: idx + 1,
+                    x: width / 2 + Math.cos(angle) * radius,
+                    y: height / 2 + Math.sin(angle) * radius,
+                    zone: zone,
+                    capacity: 100,
+                    load: 0
+                });
+            });
+
+            state.cameraOffset = { x: 0, y: 0 };
+            saveLocalProgress();
+        }
+
+        function spawnRandomNode() {
+            if (state.nodes.length >= 36) return;
+
+            const width = Math.max(800, window.innerWidth);
+            const height = Math.max(600, window.innerHeight);
+            
+            const types = [ZONE_TYPES.RESIDENTIAL, ZONE_TYPES.COMMERCIAL, ZONE_TYPES.RETAIL];
+            const randomType = types[Math.floor(Math.random() * types.length)];
+
+            let x, y, valid = false, attempts = 0;
+            while (!valid && attempts < 50) {
+                x = width / 2 + (Math.random() - 0.5) * (width * 0.85);
+                y = height / 2 + (Math.random() - 0.5) * (height * 0.85);
+                valid = state.nodes.every(n => Math.hypot(n.x - x, n.y - y) > 90);
+                attempts++;
+            }
+
+            if (valid) {
+                state.nodes.push({
+                    id: Date.now(),
+                    x, y,
+                    zone: randomType,
+                    capacity: 100,
+                    load: 0
+                });
+            }
+        }
+
+        function calculateCongestionAndTriangles() {
+            state.nodes.forEach(n => n.load = 0);
+
+            state.edges.forEach(edge => {
+                const n1 = state.nodes.find(n => n.id === edge.from);
+                const n2 = state.nodes.find(n => n.id === edge.to);
+                if (n1) n1.load += 15;
+                if (n2) n2.load += 15;
+            });
+
+            let connectedTriplets = 0;
+            const resNodes = state.nodes.filter(n => n.zone.type === 'RESIDENTIAL');
+            const comNodes = state.nodes.filter(n => n.zone.type === 'COMMERCIAL');
+            const retNodes = state.nodes.filter(n => n.zone.type === 'RETAIL');
+
+            resNodes.forEach(r => {
+                comNodes.forEach(c => {
+                    retNodes.forEach(rt => {
+                        const tripletKey = [r.id, c.id, rt.id].sort().join('-');
+                        const isConnected = isPathExisting(r.id, c.id) && isPathExisting(c.id, rt.id);
+                        
+                        if (isConnected && !state.activeTriangles.has(tripletKey)) {
+                            state.activeTriangles.add(tripletKey);
+                            state.population += 5000;
+                            state.budget += 10000;
+                            SoundEngine.playPopBonus();
+                        }
+                        if (isConnected) connectedTriplets++;
+                    });
+                });
+            });
+
+            const possibleTriplets = Math.max(1, resNodes.length * comNodes.length * retNodes.length);
+            state.connectivityScore = Math.min(100, Math.floor((connectedTriplets / possibleTriplets) * 100));
+
+            updateUI();
+            saveLocalProgress();
+        }
+
+        function isPathExisting(startId, endId) {
+            if (startId === endId) return true;
+            const visited = new Set();
+            const queue = [startId];
+
+            while (queue.length > 0) {
+                const curr = queue.shift();
+                if (curr === endId) return true;
+                visited.add(curr);
+
+                state.edges.forEach(e => {
+                    if (e.from === curr && !visited.has(e.to)) queue.push(e.to);
+                    if (e.to === curr && !visited.has(e.from)) queue.push(e.from);
+                });
+            }
+            return false;
+        }
+
+        function getCongestionColor(loadPercentage) {
+            if (loadPercentage <= 30) return '#10b981'; // 0%~30%: 초록
+            if (loadPercentage <= 59) return '#f59e0b'; // 31%~59%: 노랑
+            if (loadPercentage <= 100) return '#f97316'; // 60%~100%: 주황
+            return '#ef4444'; // 101% 이상: 빨강
+        }
+
+        let lastTick = Date.now();
+        function gameTick() {
+            const now = Date.now();
+            const delta = (now - lastTick) / 1000;
+            lastTick = now;
+
+            if (state.isGameOver) return;
+
+            state.gameTime += delta;
+
+            if (Math.floor(state.gameTime) % 20 === 0 && Math.floor(state.gameTime - delta) % 20 !== 0) {
+                spawnRandomNode();
+            }
+
+            if (state.connectivityScore > 0) {
+                const growthRate = Math.floor(state.connectivityScore * 18 * delta);
+                state.population += growthRate;
+                state.budget += Math.floor(growthRate * 0.5);
+            }
+
+            state.nodes.forEach(node => {
+                if (node.load > 100) {
+                    state.population = Math.max(1000, state.population - Math.floor(15 * delta));
+                }
+            });
+
+            if (Math.random() < 0.3 && state.edges.length > 0) {
+                const edge = state.edges[Math.floor(Math.random() * state.edges.length)];
+                const n1 = state.nodes.find(n => n.id === edge.from);
+                const n2 = state.nodes.find(n => n.id === edge.to);
+                const line = ALL_LINES_CONFIG.find(l => l.id === edge.lineId);
+                if (n1 && n2 && line) {
+                    state.passengers.push({
+                        x: n1.x, y: n1.y,
+                        targetX: n2.x, targetY: n2.y,
+                        progress: 0,
+                        speed: 0.01 + Math.random() * 0.015,
+                        color: line.color
+                    });
+                }
+            }
+
+            state.passengers.forEach((p, idx) => {
+                p.progress += p.speed;
+                if (p.progress >= 1) state.passengers.splice(idx, 1);
+            });
+
+            if (state.population >= state.targetPopulation) {
+                state.isGameOver = true;
+                showGameOverReport(true);
+            }
+
+            updateUI();
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(state.cameraOffset.x, state.cameraOffset.y);
+
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.3)';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            for (let x = -1000; x < canvas.width + 1000; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, -1000);
+                ctx.lineTo(x, canvas.height + 1000);
+                ctx.stroke();
+            }
+            for (let y = -1000; y < canvas.height + 1000; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(-1000, y);
+                ctx.lineTo(canvas.width + 1000, y);
+                ctx.stroke();
+            }
+
+            state.edges.forEach(edge => {
+                const n1 = state.nodes.find(n => n.id === edge.from);
+                const n2 = state.nodes.find(n => n.id === edge.to);
+                const line = ALL_LINES_CONFIG.find(l => l.id === edge.lineId);
+
+                if (n1 && n2 && line) {
+                    ctx.beginPath();
+                    ctx.moveTo(n1.x, n1.y);
+                    ctx.lineTo(n2.x, n2.y);
+                    ctx.strokeStyle = line.color;
+                    ctx.lineWidth = 8;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(n1.x, n1.y);
+                    ctx.lineTo(n2.x, n2.y);
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            });
+
+            if (state.dragStartNode) {
+                const line = ALL_LINES_CONFIG.find(l => l.id === state.selectedLineId);
+                ctx.beginPath();
+                ctx.moveTo(state.dragStartNode.x, state.dragStartNode.y);
+                ctx.lineTo(state.mousePos.x - state.cameraOffset.x, state.mousePos.y - state.cameraOffset.y);
+                ctx.strokeStyle = line ? line.color : '#ffffff';
+                ctx.lineWidth = 6;
+                ctx.setLineDash([8, 8]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            state.passengers.forEach(p => {
+                const currX = p.x + (p.targetX - p.x) * p.progress;
+                const currY = p.y + (p.targetY - p.y) * p.progress;
+
+                ctx.beginPath();
+                ctx.arc(currX, currY, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+
+            state.nodes.forEach(node => {
+                const congestionColor = getCongestionColor(node.load);
+
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 28, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+                ctx.fill();
+                ctx.strokeStyle = congestionColor;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 20, 0, Math.PI * 2);
+                ctx.fillStyle = node.zone.color;
+                ctx.fill();
+
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(node.zone.emoji, node.x, node.y + 1);
+
+                ctx.font = 'bold 11px system-ui';
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillText(`${node.zone.label}`, node.x, node.y - 36);
+
+                ctx.font = 'bold 10px system-ui';
+                ctx.fillStyle = congestionColor;
+                ctx.fillText(`${node.load}%`, node.x, node.y + 36);
+            });
+
+            ctx.restore();
+
+            requestAnimationFrame(render);
+        }
+
+        function getNodeAtPos(x, y) {
+            const worldX = x - state.cameraOffset.x;
+            const worldY = y - state.cameraOffset.y;
+            return state.nodes.find(n => Math.hypot(n.x - worldX, n.y - worldY) <= 30);
+        }
+
+        canvas.addEventListener('mousedown', e => {
+            SoundEngine.init();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const clickedNode = getNodeAtPos(mouseX, mouseY);
+
+            if (clickedNode) {
+                if (state.deleteMode) {
+                    state.edges = state.edges.filter(edge => edge.from !== clickedNode.id && edge.to !== clickedNode.id);
+                    SoundEngine.playDelete();
+                    calculateCongestionAndTriangles();
+                } else {
+                    state.dragStartNode = clickedNode;
+                }
+            } else {
+                state.isPanning = true;
+                state.panStart = { x: e.clientX - state.cameraOffset.x, y: e.clientY - state.cameraOffset.y };
+            }
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            state.mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+            if (state.isPanning) {
+                state.cameraOffset.x = e.clientX - state.panStart.x;
+                state.cameraOffset.y = e.clientY - state.panStart.y;
+            }
+        });
+
+        canvas.addEventListener('mouseup', e => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (state.dragStartNode) {
+                const targetNode = getNodeAtPos(mouseX, mouseY);
+                if (targetNode && targetNode.id !== state.dragStartNode.id) {
+                    const exists = state.edges.some(edge => 
+                        (edge.from === state.dragStartNode.id && edge.to === targetNode.id && edge.lineId === state.selectedLineId) ||
+                        (edge.to === state.dragStartNode.id && edge.from === targetNode.id && edge.lineId === state.selectedLineId)
+                    );
+
+                    const currentLine = ALL_LINES_CONFIG.find(l => l.id === state.selectedLineId);
+
+                    if (!exists && currentLine && state.budget >= currentLine.costPerSegment) {
+                        state.edges.push({
+                            from: state.dragStartNode.id,
+                            to: targetNode.id,
+                            lineId: state.selectedLineId
+                        });
+                        state.budget -= currentLine.costPerSegment;
+                        SoundEngine.playConnect();
+                        calculateCongestionAndTriangles();
+                    }
+                }
+            }
+
+            state.dragStartNode = null;
+            state.isPanning = false;
+        });
+
+        function setupUI() {
+            document.getElementById('sound-toggle').onclick = () => {
+                SoundEngine.muted = !SoundEngine.muted;
+                document.getElementById('sound-toggle').innerText = SoundEngine.muted ? '🔇 OFF' : '🔊 ON';
+            };
+
+            const deleteBtn = document.getElementById('mode-delete-btn');
+            deleteBtn.onclick = () => {
+                SoundEngine.init();
+                state.deleteMode = !state.deleteMode;
+                deleteBtn.classList.toggle('active', state.deleteMode);
+                if (state.deleteMode) {
+                    document.querySelectorAll('.line-btn').forEach(b => b.classList.remove('active'));
+                }
+            };
+
+            document.getElementById('reset-view-btn').onclick = () => {
+                state.cameraOffset = { x: 0, y: 0 };
+            };
+
+            document.getElementById('toggle-sidebar-btn').onclick = () => {
+                document.getElementById('sidebar').classList.toggle('collapsed');
+            };
+
+            document.getElementById('modal-action-btn').onclick = () => {
+                SoundEngine.init();
+                document.getElementById('modal').classList.remove('active');
+            };
+
+            updateLineButtons();
+        }
+
+        function updateLineButtons() {
+            const lineButtonsContainer = document.getElementById('line-buttons');
+            lineButtonsContainer.innerHTML = '';
+
+            const availableLines = getUnlockedLines();
+
+            // Ensure current selected line is valid among unlocked lines
+            if (!availableLines.some(l => l.id === state.selectedLineId)) {
+                state.selectedLineId = availableLines[0].id;
+            }
+
+            availableLines.forEach(line => {
+                const btn = document.createElement('button');
+                btn.className = `line-btn ${line.id === state.selectedLineId ? 'active' : ''}`;
+                btn.style.backgroundColor = line.color;
+                btn.innerText = line.id;
+                btn.onclick = () => {
+                    SoundEngine.init();
+                    state.selectedLineId = line.id;
+                    state.deleteMode = false;
+                    document.getElementById('mode-delete-btn').classList.remove('active');
+                    document.querySelectorAll('.line-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                };
+                lineButtonsContainer.appendChild(btn);
+            });
+        }
+
+        function updateUI() {
+            document.getElementById('pop-text').innerText = `${state.population.toLocaleString()} 명`;
+            document.getElementById('budget-text').innerText = `₩ ${state.budget.toLocaleString()}`;
+            document.getElementById('connectivity-text').innerText = `${state.connectivityScore}%`;
+
+            const popPercent = Math.min(100, (state.population / state.targetPopulation) * 100);
+            document.getElementById('pop-progress').style.width = `${popPercent}%`;
+
+            updateLineButtons();
+
+            const statsList = document.getElementById('line-stats-list');
+            statsList.innerHTML = '<div style="margin-bottom: 6px; font-weight: bold; color: #94a3b8;">노선별 연결 수</div>';
+
+            const availableLines = getUnlockedLines();
+            availableLines.forEach(line => {
+                const edgeCount = state.edges.filter(e => e.lineId === line.id).length;
+                const row = document.createElement('div');
+                row.className = 'legend-item';
+                row.innerHTML = `<span><span class="congestion-indicator" style="background:${line.color};"></span>${line.name}</span><span>${edgeCount} 개 구간</span>`;
+                statsList.appendChild(row);
+            });
+        }
+
+        function saveLocalProgress() {
+            try {
+                localStorage.setItem('metropolis_high_pop', Math.max(state.population, localStorage.getItem('metropolis_high_pop') || 0));
+            } catch (e) {
+                // Ignore storage issues if restricted
+            }
+        }
+
+        function showGameOverReport(isWin) {
+            const modal = document.getElementById('modal');
+            const title = document.getElementById('modal-title');
+            const content = document.getElementById('modal-content');
+            const actionBtn = document.getElementById('modal-action-btn');
+
+            title.innerText = isWin ? '🎉 축하합니다! 목표 인구 달성!' : '📊 도시 교통 분석 리포트';
+
+            content.innerHTML = `
+                <div style="text-align:center; margin-bottom: 16px;">
+                    <div style="font-size: 2.5rem; font-weight: bold; color: #10b981;">1,000,000 명</div>
+                    <div style="color: #94a3b8;">초거대 메트로폴리스 대도시 도달 성공!</div>
+                </div>
+                <hr style="border-color:#334155; margin-bottom: 16px;">
+                <p><strong>[학습 평가 퀴즈]</strong></p>
+                <p style="margin-top: 8px;">Q. 출퇴근 시간 특정 역의 혼잡도가 100%를 넘어 초과(빨강) 상태가 될 때 가장 바람직한 도시 인프라 대책은 무엇일까요?</p>
+                
+                <div class="quiz-option" onclick="checkQuiz(this, false)">1. 인구 증가를 막기 위해 주거 구역 지하철 노선을 전면 폐쇄한다.</div>
+                <div class="quiz-option" onclick="checkQuiz(this, true)">2. 우회 노선이나 환승 노선을 신설하여 승객 통행량을 분산시킨다.</div>
+                <div class="quiz-option" onclick="checkQuiz(this, false)">3. 지하철 운영을 중단하고 도로만 넓힌다.</div>
+            `;
+
+            actionBtn.innerText = '다시 플레이하기';
+            actionBtn.onclick = () => {
+                state.population = 5000;
+                state.budget = 50000;
+                state.selectedLineId = 1;
+                state.isGameOver = false;
+                initMapNodes();
+                modal.classList.remove('active');
+            };
+
+            modal.classList.add('active');
+        }
+
+        window.checkQuiz = function(element, isCorrect) {
+            const options = document.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.style.pointerEvents = 'none');
+
+            if (isCorrect) {
+                element.classList.add('correct');
+                element.innerHTML += ' ⭕ (정답: 직주근접과 분산 우회노선 구축이 효율적입니다)';
+            } else {
+                element.classList.add('incorrect');
+                element.innerHTML += ' ❌ (오답)';
+            }
+        };
+
+        window.onload = function() {
+            initMapNodes();
+            setupUI();
+            setInterval(gameTick, 1000);
+            render();
+        };
+    </script>
+</body>
+</html>
